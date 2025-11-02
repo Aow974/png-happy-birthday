@@ -69,6 +69,26 @@ main {
     color: #333;
 }
 
+/* Permettre au bouton de se positionner absolument à l'intérieur */
+.upload-content {
+    position: relative;
+}
+
+/* Styles pour le bouton 'Choisir des images' afin qu'il puisse bouger sur tout le viewport */
+#chooseBtn {
+    position: fixed; /* fixed pour pouvoir parcourir tout l'écran */
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    z-index: 1200;
+    transition: left 0.18s ease, top 0.18s ease, transform 0.12s ease;
+    pointer-events: auto;
+}
+
+#chooseBtn.fleeing {
+    transition: left 0.10s ease, top 0.10s ease, transform 0.08s ease;
+}
+
 .upload-content p {
     color: #666;
     margin-bottom: 20px;

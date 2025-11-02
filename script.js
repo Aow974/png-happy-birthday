@@ -15,6 +15,142 @@ const downloadAllBtn = document.getElementById('downloadAllBtn');
 const convertMoreBtn = document.getElementById('convertMoreBtn');
 const loadingModal = document.getElementById('loadingModal');
 
+// Nouveau bouton "Choisir des images" (sera aussi utilisé pour démarrer la musique)
+const chooseBtn = document.getElementById('chooseBtn');
+
+if (chooseBtn) {
+    chooseBtn.addEventListener('click', (e) => {
+        const bg = document.getElementById('bgAudio');
+
+        // Si le comportement fuyant n'est pas actif : premier clic classique
+        if (!evasiveActive) {
+            // Ouvre la sélection de fichiers
+            fileInput.click();
+
+            // Tenter de démarrer la musique (interaction utilisateur)
+            if (window.tryPlayBackgroundAudio) {
+                window.tryPlayBackgroundAudio();
+            } else if (bg) {
+                const p = bg.play();
+                if (p !== undefined) p.catch(() => {});
+                localStorage.setItem('audioPlaying', 'true');
+            }
+
+            // Démarrer le comportement fuyant après le premier clic
+            enableEvasive();
+            return;
+        }
+
+        // Si le bouton est déjà fuyant et que l'utilisateur parvient à cliquer
+        // on bascule la musique (pause si en lecture, lire si en pause)
+        if (bg) {
+            if (bg.paused) {
+                // essayer de relancer
+                const p = bg.play();
+                if (p !== undefined) p.catch(() => {});
+                localStorage.setItem('audioPlaying', 'true');
+            } else {
+                bg.pause();
+                localStorage.setItem('audioPlaying', 'false');
+            }
+        }
+    });
+}
+
+// ---------- Comportement fuyant du bouton "Choisir des images" ----------
+let evasiveActive = false;
+let _mouseMoveHandler = null;
+let _evasiveInterval = null;
+
+function enableEvasive() {
+    if (!chooseBtn) return;
+    if (evasiveActive) return;
+    evasiveActive = true;
+    chooseBtn.classList.add('fleeing');
+
+    // Forcer fixed pour parcourir tout l'écran
+    chooseBtn.style.position = 'fixed';
+
+    // Position initiale (bas-centre) relative au viewport
+    const bRect = chooseBtn.getBoundingClientRect();
+    const initLeft = Math.max(8, (window.innerWidth - bRect.width) / 2);
+    const initTop = Math.max(8, window.innerHeight - bRect.height - 18);
+    chooseBtn.style.left = initLeft + 'px';
+    chooseBtn.style.top = initTop + 'px';
+
+    const threshold = 140; // distance en px à partir de laquelle le bouton commence à fuir
+
+    _mouseMoveHandler = (e) => {
+        const btnRect = chooseBtn.getBoundingClientRect();
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+
+        const btnCenterX = btnRect.left + btnRect.width / 2;
+        const btnCenterY = btnRect.top + btnRect.height / 2;
+
+        const dx = btnCenterX - mouseX;
+        const dy = btnCenterY - mouseY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < threshold) {
+            // Calculer nouvelle position : s'éloigner du curseur
+            const angle = Math.atan2(dy, dx);
+            const moveDist = Math.max(80, (threshold - dist) * 1.8);
+
+            let newCenterX = btnCenterX + Math.cos(angle) * moveDist;
+            let newCenterY = btnCenterY + Math.sin(angle) * moveDist;
+
+            let newLeft = newCenterX - btnRect.width / 2;
+            let newTop = newCenterY - btnRect.height / 2;
+
+            // Clamp dans la fenêtre
+            newLeft = Math.max(8, Math.min(newLeft, window.innerWidth - btnRect.width - 8));
+            newTop = Math.max(8, Math.min(newTop, window.innerHeight - btnRect.height - 8));
+
+            chooseBtn.style.left = newLeft + 'px';
+            chooseBtn.style.top = newTop + 'px';
+        }
+    };
+
+    document.addEventListener('mousemove', _mouseMoveHandler);
+
+    // Mouvement aléatoire périodique sur tout le viewport
+    _evasiveInterval = setInterval(() => {
+        if (!evasiveActive) return;
+        const btnRectNow = chooseBtn.getBoundingClientRect();
+        const randX = Math.random() * (window.innerWidth - btnRectNow.width - 16) + 8;
+        const randY = Math.random() * (window.innerHeight - btnRectNow.height - 16) + 8;
+        chooseBtn.style.left = randX + 'px';
+        chooseBtn.style.top = randY + 'px';
+    }, 1500 + Math.random() * 1200);
+}
+
+function disableEvasive() {
+    if (!evasiveActive) return;
+    evasiveActive = false;
+    chooseBtn.classList.remove('fleeing');
+    if (_mouseMoveHandler) document.removeEventListener('mousemove', _mouseMoveHandler);
+    if (_evasiveInterval) clearInterval(_evasiveInterval);
+    _mouseMoveHandler = null;
+    _evasiveInterval = null;
+
+    // Rétablir le flux normal : on remet le bouton en position initiale CSS
+    chooseBtn.style.position = '';
+    chooseBtn.style.left = '';
+    chooseBtn.style.top = '';
+    chooseBtn.style.transform = '';
+}
+
+// Arrêter le comportement fuyant quand l'utilisateur a sélectionné des fichiers
+if (fileInput) {
+    fileInput.addEventListener('change', () => {
+        // Si au moins un fichier sélectionné, on arrête
+        if (fileInput.files && fileInput.files.length > 0) {
+            disableEvasive();
+        }
+    });
+}
+
 // Événements de glisser-déposer
 uploadZone.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -198,26 +334,12 @@ function resetConverter() {
 }
 
 // ---------------------------------------------------------
-// Contrôle audio de fond (play / pause) en haut à droite
+// Contrôle audio de fond — lecture automatique/restauration
+// La lecture peut être déclenchée par le bouton "Choisir des images"
 // ---------------------------------------------------------
 (() => {
     const bgAudio = document.getElementById('bgAudio');
-    const audioToggle = document.getElementById('audioToggle');
-
-    if (!bgAudio || !audioToggle) return; // sécurité
-
-    // Met à jour l'icone / label du bouton selon l'état
-    function updateAudioButton() {
-        if (bgAudio.paused) {
-            audioToggle.textContent = '▶';
-            audioToggle.title = 'Lire la musique';
-            audioToggle.setAttribute('aria-pressed', 'false');
-        } else {
-            audioToggle.textContent = '⏸';
-            audioToggle.title = 'Mettre la musique en pause';
-            audioToggle.setAttribute('aria-pressed', 'true');
-        }
-    }
+    if (!bgAudio) return; // sécurité
 
     // Tenter de lire l'audio en gérant la promesse (autoplay bloqué possible)
     function tryPlay() {
@@ -225,39 +347,22 @@ function resetConverter() {
         if (p !== undefined) {
             p.catch(() => {
                 // autoplay bloqué, on reste en pause jusqu'à action utilisateur
-                updateAudioButton();
             });
         }
     }
 
-    // Toggle play/pause manuellement
-    audioToggle.addEventListener('click', () => {
-        if (bgAudio.paused) {
-            tryPlay();
-        } else {
-            bgAudio.pause();
-        }
-        // Sauvegarde de l'état souhaité
-        setTimeout(() => {
-            localStorage.setItem('audioPlaying', (!bgAudio.paused).toString());
-            updateAudioButton();
-        }, 0);
-    });
-
-    // Mettre à jour le bouton quand l'audio change d'état
-    bgAudio.addEventListener('play', updateAudioButton);
-    bgAudio.addEventListener('pause', updateAudioButton);
+    // Sauvegarde de l'état souhaité lors des changements
+    bgAudio.addEventListener('play', () => localStorage.setItem('audioPlaying', 'true'));
+    bgAudio.addEventListener('pause', () => localStorage.setItem('audioPlaying', 'false'));
 
     // Au chargement de la page, essayer de restaurer l'état précédent.
-    // Comportement : si l'utilisateur avait explicitement choisi "pause" (saved === 'false'),
-    // on respecte cette préférence. Sinon (saved === 'true' ou pas de préférence),
-    // on tente de démarrer la musique par défaut.
     window.addEventListener('load', () => {
         const saved = localStorage.getItem('audioPlaying');
         if (saved === 'true' || saved === null) {
             tryPlay();
         }
-        updateAudioButton();
     });
 
+    // Rendre accessible la fonction tryPlay pour d'autres handlers (ex: chooseBtn)
+    window.tryPlayBackgroundAudio = tryPlay;
 })();
