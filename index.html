@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertisseur d'Images en PNG</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🖼️ Convertisseur PNG</h1>
+            <p>Transformez vos images en format PNG en quelques secondes</p>
+        </header>
+
+        <main>
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-content">
+                    <div class="upload-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </div>
+                    <h3>Glissez vos images ici</h3>
+                    <p>Ou cliquez pour sélectionner des fichiers</p>
+                    <input type="file" id="fileInput" accept="image/*" multiple hidden>
+                    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                        Choisir des images
+                    </button>
+                </div>
+            </div>
+
+            <div class="supported-formats">
+                <p>Formats supportés : JPG, JPEG, WebP, GIF, BMP, TIFF, SVG</p>
+            </div>
+
+            <div class="preview-section" id="previewSection" style="display: none;">
+                <h2>Images à convertir</h2>
+                <div class="preview-grid" id="previewGrid"></div>
+                <div class="actions">
+                    <button class="btn btn-success" id="convertBtn">
+                        Convertir en PNG
+                    </button>
+                    <button class="btn btn-secondary" id="clearBtn">
+                        Tout effacer
+                    </button>
+                </div>
+            </div>
+
+            <div class="results-section" id="resultsSection" style="display: none;">
+                <h2>Images converties</h2>
+                <div class="results-grid" id="resultsGrid"></div>
+                <div class="actions">
+                    <button class="btn btn-primary" id="downloadAllBtn">
+                        Télécharger tout
+                    </button>
+                    <button class="btn btn-secondary" id="convertMoreBtn">
+                        Convertir d'autres images
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>© 2024 Convertisseur PNG - 100% gratuit et sécurisé</p>
+        </footer>
+    </div>
+
+    <div class="loading-modal" id="loadingModal" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Conversion en cours...</p>
+        </div>
+    </div>
+
+    <!-- Background audio and control -->
+    <audio id="bgAudio" src="music.mp3" loop preload="auto"></audio>
+    <button id="audioToggle" class="audio-toggle" aria-label="Basculer la musique">▮▮</button>
+
+    <script src="script.js"></script>
+</body>
+</html>
